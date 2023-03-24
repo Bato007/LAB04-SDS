@@ -10,11 +10,6 @@ class Section(object):
     self.virtualSize = virtualSize
     self.rawDataSize = rawDataSize
 
-class DLL(object):
-  def __init__(self, name, functions) -> None:
-    self.name = name
-    self.functions = functions
-
 class Malware(object):
   def __init__(self, index, filename, sections, dll, date) -> None:
     self.index = index
@@ -41,24 +36,24 @@ for i, filename in enumerate(os.listdir(malware_path)):
 
   # Reading the dll and function calls
   dllCalls = []
+  functionsCalled = []
   for entry in pe.DIRECTORY_ENTRY_IMPORT:
-    print('[GENERATOR]: DLL calls\t', entry.dll.decode('utf-8'))
+    print('[GENERATOR]: DLL calls\t', entry.dll)
 
-    functionsCalled = []
     print('[GENERATOR]: Functions')
     for function in entry.imports:
       functionsCalled.append(function.name.decode('utf-8'))
       print('\t', function.name)
-    dllCalls.append(DLL(entry.dll, functionsCalled))
+    dllCalls.append(entry.dll.decode('utf-8'))
 
   date = pe.FILE_HEADER.dump_dict()['TimeDateStamp']['Value'].split('[')[1][:-1]
   print('Time Data Stamp:', date)
   print('Time Data Stamp:', hex(pe.FILE_HEADER.TimeDateStamp))
-  malware = Malware(i, filename, sections, dllCalls, date)
+  malware = Malware(i, filename, sections, [dllCalls, functionsCalled], date)
   malwares.append(malware)
 
 # Now creates the csv
-columns = ['index', 'filename', 'sections', 'dll', 'date']
+columns = ['index', 'filename', 'sections', 'dll', 'functions', 'date']
 df = pd.DataFrame(columns=columns)
 for malware in malwares:
 
@@ -66,14 +61,7 @@ for malware in malwares:
   for section in malware.sections:
     sections.append([section.name, section.virtualAdress, section.virtualSize, section.rawDataSize])
 
-  dlls = []
-  for dll in malware.dll:
-    dictionary = {}
-    dictionary['name'] = dll.name
-    dictionary['functions'] = dll.functions
-    dlls.append(dictionary)
-
-  df.loc[malware.index+1] = [malware.index, malware.filename, sections ,dlls, malware.date]
+  df.loc[malware.index+1] = [malware.index, malware.filename, sections, malware.dll[0], malware.dll[1], malware.date]
 
 df.to_csv('./data.csv', index=False)
 print('[GENERATOR]: Finished')
