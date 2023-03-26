@@ -1,11 +1,8 @@
 #!/usr/bin/python
 
-import argparse
-import os
-import networkx
+import os, networkx, itertools
 from networkx.drawing.nx_pydot import write_dot
-import itertools
-import pprint
+import matplotlib.pyplot as plt
 
 """
 Copyright (c) 2015, Joshua Saxe
@@ -68,31 +65,14 @@ def pecheck(fullpath):
     return open(fullpath).read(2) == "MZ"
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description="Identify similarities between malware samples and build similarity graph"
-    )
+    malware_path = './MALWR'
+    threshold = 0.75
 
-    parser.add_argument(
-        "target_directory",
-        help="Directory containing malware"
-    )
-
-    parser.add_argument(
-        "output_dot_file",
-        help="Where to save the output graph DOT file"
-    )
-
-    parser.add_argument(
-        "--jaccard_index_threshold","-j",dest="threshold",type=float,
-        default=0.8,help="Threshold above which to create an 'edge' between samples"
-    )
-
-    args = parser.parse_args()
     malware_paths = [] # where we'll store the malware file paths
     malware_attributes = dict() # where we'll store the malware strings
     graph = networkx.Graph() # the similarity graph
 
-    for root, dirs, paths in os.walk(args.target_directory):
+    for root, dirs, paths in os.walk(malware_path):
         # walk the target directory tree and store all of the file paths
         for path in paths:
             full_path = os.path.join(root,path)
@@ -117,9 +97,14 @@ if __name__ == '__main__':
         jaccard_index = jaccard(malware_attributes[malware1],malware_attributes[malware2])
 
         # if the jaccard distance is above the threshold add an edge
-        if jaccard_index > args.threshold:
+        if jaccard_index > threshold:
             print (malware1,malware2,jaccard_index)
-            graph.add_edge(malware1,malware2,penwidth=1+(jaccard_index-args.threshold)*10)
+            graph.add_edge(malware1,malware2,penwidth=1+(jaccard_index-threshold)*10)
 
     # write the graph to disk so we can visualize it
-    write_dot(graph,args.output_dot_file)
+    options = {
+        'node_size': 400,
+        'width': 3,
+    }
+    networkx.draw(graph, **options)
+    plt.show() 
